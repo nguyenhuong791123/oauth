@@ -13,50 +13,49 @@ USE sc_oauth;
 -- SET GLOBAL innodb_file_per_table=true;
 
 -- create needed structure for oauth provider
-CREATE TABLE IF NOT EXISTS oa_users (
-  user_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT
-  ,user_mail VARCHAR(150) NOT NULL DEFAULT ''
-  ,user_pass VARCHAR(80) NOT NULL DEFAULT ''
-  ,UNIQUE KEY uk_users_user_mail (`user_mail`)
+CREATE TABLE IF NOT EXISTS oa_basic (
+  id INT NOT NULL PRIMARY KEY AUTO_INCREMENT
+  ,login_id VARCHAR(20) NOT NULL DEFAULT ''
+  ,password VARCHAR(80) NOT NULL DEFAULT ''
+  ,UNIQUE KEY uk_oa_basic_login_id (`login_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
 
-CREATE TABLE oa_client (
+CREATE TABLE IF NOT EXISTS oa_client (
   client_id VARCHAR(40) PRIMARY KEY
   ,client_secret VARCHAR(55) NOT NULL DEFAULT ''
-  ,user_id INT NOT NULL DEFAULT 0
-  ,user_mail VARCHAR(40) NOT NULL DEFAULT ''
+  ,basic_id INT NOT NULL DEFAULT 0
   ,is_confidential BOOLEAN DEFAULT FALSE
-  ,redirect_uris TEXT
-  ,default_scopes TEXT
+  ,_redirect_uris TEXT
+  ,_default_scopes TEXT
   ,description VARCHAR(400)
   ,UNIQUE KEY uk_client_secret (`client_secret`)
-  ,FOREIGN KEY (`user_id`) REFERENCES `oa_users` (`user_id`) ON UPDATE CASCADE
+  ,CONSTRAINT fk_oa_client_login_id FOREIGN KEY (`basic_id`) REFERENCES `oa_basic` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
 
 CREATE TABLE IF NOT EXISTS oa_grant (
-  grant_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT
+  id INT NOT NULL PRIMARY KEY AUTO_INCREMENT
   ,client_id VARCHAR(40) NOT NULL DEFAULT ''
-  ,user_id INT NOT NULL DEFAULT 0
+  ,basic_id INT NOT NULL DEFAULT 0
   ,code VARCHAR(255)
   ,redirect_uri VARCHAR(255)
   ,expires TIMESTAMP
-  ,scopes TEXT
+  ,_scopes TEXT
   ,INDEX idx_grant_code(`code`)
-  ,FOREIGN KEY (`user_id`) REFERENCES `oa_users` (`user_id`) ON UPDATE CASCADE
-  ,FOREIGN KEY (`client_id`) REFERENCES `oa_client` (`client_id`)
+  ,CONSTRAINT fk_oa_grant_login_id FOREIGN KEY (`basic_id`) REFERENCES `oa_basic` (`id`) ON UPDATE CASCADE
+  ,CONSTRAINT fk_oa_grant_client_id FOREIGN KEY (`client_id`) REFERENCES `oa_client` (`client_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
 
 CREATE TABLE IF NOT EXISTS oa_token (
-  token_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT
+  id INT NOT NULL PRIMARY KEY AUTO_INCREMENT
   ,token_type VARCHAR(40) NOT NULL DEFAULT ''
-  ,user_id INT NOT NULL DEFAULT 0
+  ,basic_id INT NOT NULL DEFAULT 0
   ,client_id VARCHAR(40) NOT NULL DEFAULT ''
   ,access_token VARCHAR(255)
   ,refresh_token VARCHAR(255)
   ,expires TIMESTAMP
-  ,scopes TEXT
+  ,_scopes TEXT
   ,UNIQUE KEY uk_token_access_token (`access_token`)
   ,UNIQUE KEY uk_token_refresh_token (`refresh_token`)
-  ,FOREIGN KEY (`user_id`) REFERENCES `oa_users` (`user_id`) ON UPDATE CASCADE
-  ,FOREIGN KEY (`client_id`) REFERENCES `oa_client` (`client_id`)
+  ,CONSTRAINT fk_oa_token_login_id FOREIGN KEY (`basic_id`) REFERENCES `oa_basic` (`id`) ON UPDATE CASCADE
+  ,CONSTRAINT fk_oa_token_client_id FOREIGN KEY (`client_id`) REFERENCES `oa_client` (`client_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;

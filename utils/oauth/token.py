@@ -6,17 +6,17 @@ from .db import db, ma
 class Token(db.Model):
     __tablename__ = 'oa_token'
 
-    token_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    basic_id = db.Column(db.Integer, db.ForeignKey('oa_basic.id', ondelete='CASCADE'))
+    user = relationship('User')
     client_id = db.Column(db.String(40), db.ForeignKey('oa_client.client_id'), nullable=False)
     client = relationship('Client')
-    user_id = db.Column(db.Integer, db.ForeignKey('oa_users.user_id'))
-    user = relationship('User')
 
     token_type = db.Column(db.String(40), nullable=False)
     access_token = db.Column(db.String(255), unique=True)
     refresh_token = db.Column(db.String(255), unique=True)
     expires = db.Column(db.DateTime)
-    scopes = db.Column(db.Text)
+    _scopes = db.Column(db.Text)
 
     def __init__(self, **kwargs):
         expires_in = kwargs.pop('expires_in', None)
@@ -26,18 +26,14 @@ class Token(db.Model):
             setattr(self, k, v)
 
     @property
-    def get_user(self):
-        return self.user
-
-    @property
     def get_client(self):
         return self.client
 
-    # @property
-    # def scopes(self):
-    #     if self.scopes:
-    #         return self.scopes.split()
-    #     return []
+    @property
+    def scopes(self):
+        if self.scopes:
+            return self.scopes.split()
+        return []
 
     def add(self):
         db.session.add(self)
@@ -49,6 +45,14 @@ class Token(db.Model):
         db.session.commit()
         return self
 
+    def delete_all(self):
+        ts = db.session.query(Token).all()
+        if ts is None:
+            return
+        for t in ts:
+            db.session.delete(t)
+            db.session.commit()
+
     def get_schemas(self, list):
         if list is None or len(list) <= 0:
             return TokenSchema(many=True).dump([ self ])
@@ -58,9 +62,4 @@ class Token(db.Model):
 class TokenSchema(ma.ModelSchema):
     class Meta:
         model = Token
-        fields = ('token_id', 'client_id', 'user_id', 'token_type', 'access_token', 'refresh_token', 'expires', 'scopes')
-
-class TOKEN_TYPE():
-   BEARER = 'Bearer'
-   TOKEN = 'Token'
-   SCAPP = 'Scapp'
+        fields = ('id', 'client_id', 'basic_id', 'token_type', 'access_token', 'refresh_token', 'expires', '_scopes')

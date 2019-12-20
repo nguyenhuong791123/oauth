@@ -8,26 +8,43 @@ class Client(db.Model):
 
     client_id = db.Column(db.String(40), primary_key=True)
     client_secret = db.Column(db.String(55), unique=True, index=True, nullable=False)
-    user_id = db.Column(db.ForeignKey('oa_users.user_id'))
+    basic_id = db.Column(db.Integer, db.ForeignKey('oa_basic.id', ondelete='CASCADE'))
     user = relationship('User')
 
-    user_mail = db.Column(db.String(40), nullable=False)
     is_confidential = db.Column(db.Boolean)
-    redirect_uris = db.Column(db.Text)
-    default_scopes = db.Column(db.Text)
+    _redirect_uris = db.Column(db.Text)
+    _default_scopes = db.Column(db.Text)
     description = db.Column(db.String(400))
 
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+    @property
+    def client_type(self):
+        if self.is_confidential:
+            return 'confidential'
+        return 'public'
 
     @property
-    def get_user(self):
-        return self.user
+    def redirect_uris(self):
+        if self._redirect_uris:
+            return self._redirect_uris.split()
+        return []
+
+    @property
+    def default_redirect_uri(self):
+        return self.redirect_uris[0]
+        return []
+
+    @property
+    def default_scopes(self):
+        if self._default_scopes:
+            return self._default_scopes.split()
+        return []
 
     @property
     def allowed_grant_types(self):
         return [ 'authorization_code', 'password', 'client_credentials', 'refresh_token' ]
+
+    def get_user(self):
+        return self.user
 
     def add(self):
         db.session.add(self)
@@ -39,6 +56,14 @@ class Client(db.Model):
         db.session.commit()
         return self
 
+    def delete_all(self):
+        cs = db.session.query(Client).all()
+        if cs is None:
+            return
+        for c in cs:
+            db.session.delete(c)
+            db.session.commit()
+
     def get_schemas(self, list):
         if list is None or len(list) <= 0:
             return ClientSchema(many=True).dump([ self ])
@@ -48,4 +73,4 @@ class Client(db.Model):
 class ClientSchema(ma.ModelSchema):
     class Meta:
         model = Client
-        fields = ('client_id', 'client_secret', 'user_id', 'user_mail', 'is_confidential', 'redirect_uris', 'default_scopes', 'description')
+        fields = ('client_id', 'client_secret', 'basic_id', 'is_confidential', '_redirect_uris', '_default_scopes', 'description')

@@ -9,7 +9,7 @@ from flask_cors import CORS
 from utils.cm.utils import random_N_digits
 from utils.cm.dates import get_datetime
 from utils.oauth.db import db
-from utils.oauth.oa import default_provider, create_server, add_client
+from utils.oauth.oa import default_provider, create_server, add_client, delete_all_client
 
 app = Flask(__name__)
 app.secret_key = random_N_digits(24, False)
@@ -33,11 +33,11 @@ def after_request(response):
 @app.before_request
 def before_request():
     print('Before Request !!![' + get_datetime('%Y-%m-%d %H:%M:%S', None) + ']')
+    print(request.__dict__)
 
-@app.route('/addclient', methods=[ 'GET', 'POST' ])
-def api_add_client():
-    obj = add_client(request)
-    return jsonify(obj), 200
+@app.route('/', methods=['POST'])
+def index():
+    return "API !!!"
 
 if __name__ == "__main__":
     app = create_server(app)
