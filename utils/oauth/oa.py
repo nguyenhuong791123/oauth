@@ -9,6 +9,7 @@ from flask_oauthlib.contrib.oauth2 import bind_sqlalchemy
 from flask_oauthlib.contrib.oauth2 import bind_cache_grant
 
 from ..cm.utils import is_empty, is_exist, random_N_digits
+from ..cm.dates import grant_expires, token_expires, get_pattern, datetime_to_str
 from .db import db
 from .basic import User
 from .client import Client
@@ -51,9 +52,7 @@ def default_provider(app):
 
     @oauth.grantsetter
     def set_grant(client_id, code, request, *args, **kwargs):
-        # expires = datetime.utcnow() + timedelta(seconds=100)
-        expires = datetime.datetime.now() + datetime.timedelta(seconds=3600)
-        grant = Grant(client_id=client_id, code=code['code'], redirect_uri=request.redirect_uri, scopes=' '.join(request.scopes), user_id=g.username, expires=expires)
+        grant = Grant(client_id=client_id, code=code['code'], redirect_uri=request.redirect_uri, scopes=' '.join(request.scopes), user_id=g.username, expires=token_expires())
         db.session.add(grant)
         db.session.commit()
 
@@ -72,20 +71,33 @@ def default_provider(app):
     return oauth
 
 def add_client(req):
-    auth = {}
-    auth['username'] = 'huongnv'
-    auth['password'] = 'huongnv080'
+    auth = None
+    if request.method == 'POST':
+        if request.json is not None:
+            auth = request.json
+        else:
+            auth['username'] = request.form.get('username')
+            auth['password'] = request.form.get('password')
+            auth['redirect_uris'] = request.form.get('redirect_uris')
+            auth['scopes'] = request.form.get('scopes')
+
+    # auth['username'] = 'huongnv'
+    # auth['password'] = 'huongnv080'
+    # auth['redirect_uris'] = ( 'http://192.168.10.9:8084/' )
+    # auth['scopes'] = None #( 'http://192.168.10.9:8084/' )
     auth['client_id'] = uuid.uuid4().hex
-    auth['client_secret'] = random_N_digits(10, False)
-    auth['redirect_uris'] = ( 'http://192.168.10.9:8084/' )
-    auth['grant_type'] = GRANT_TYPES.PASSWORD
-    auth['code'] = random_N_digits(16, False) #'read'
-    auth['scopes'] = None #( 'http://192.168.10.9:8084/' )
+    auth['client_secret'] = random_N_digits(16, False)
+    auth['grant_type'] = GRANT_TYPES.BASIC
+    auth['code'] = random_N_digits(12, False) #'read'
 
     try:
-        access_token = create_access_token(identity=auth['username'])
-        expires = datetime.datetime.now() + datetime.timedelta(seconds=100)
+        # access_token = create_access_token(identity=auth['username'])
+        # expires = datetime.datetime.now() + datetime.timedelta(seconds=3600)
 
+        if is_exist(auth, 'username') == False or is_empty(auth['username']):
+            raise ValueError("Username is required!!!")
+        if is_exist(auth, 'password') == False or is_empty(auth['password']):
+            raise ValueError("Password is required!!!")
         if is_exist(auth, 'redirect_uris') == False or is_empty(auth['redirect_uris']):
             raise ValueError("Redirect_uris is required!!!")
 
@@ -95,15 +107,23 @@ def add_client(req):
         c = Client(basic_id=u.id, client_id=auth['client_id'], client_secret=auth['client_secret'], _redirect_uris=auth['redirect_uris'])
         c.add()
 
+        expires = grant_expires()
         g = Grant(basic_id=u.id, client_id=c.client_id, code=auth['code'], _scopes=auth['scopes'], expires=expires)
         g.add()
 
         # t = Token(basic_id=u.id, client_id=c.client_id, code=auth['code'], _scopes=auth['scopes'], expires=expires)
         # t.add()
 
-        # result = { 'client_id': c.client_id, 'client_secret': c.client_secret, 'token_type': auth['grant_type'], 'code': auth['code'] }
+        pattern = get_pattern(True, True, '-', False)
+        result = {
+            'client_id': c.client_id
+            ,'client_secret': c.client_secret
+            ,'grant_type': auth['grant_type']
+            ,'code': auth['code']
+            ,'expires': datetime_to_str(expires, pattern)
+        }
         # result = [ u.get_schemas(None), c.get_schemas(None), g.get_schemas(None), t.get_schemas(None) ]
-        result = [ u.get_schemas(None), c.get_schemas(None), g.get_schemas(None) ]
+        # result = [ u.get_schemas(None), c.get_schemas(None), g.get_schemas(None) ]
     except Exception as err:
         result = { 'msg': str(err) }
         db.session.rollback()
@@ -131,13 +151,14 @@ def create_server(app, oauth=None):
         user = User.query.get(1)
         g.user = user
 
+    # curl -v -H "Authorization: Bearer YOUR_API_KEY" http://192.168.10.9:8084/authorize
+    # curl -v -H "Content-type: application/json" -X POST -d @data/data.json http://192.168.10.9:8084/authorize
     @app.route('/authorize', methods=[ 'GET', 'POST' ])
     def api_add_client():
         obj = add_client(request)
         return jsonify(obj), 200
 
-    # curl -d client_id=05dc935620974703a865a5aec9de45ac -d client_secret=rPUdY2g2yS -d redirect_uri=http://192.168.10.9:8084/ -d grant_type=authorization_code -d code=12345 http://192.168.10.9:8084/api/token
-    # curl -v -H "Authorization: Bearer 9EsIGGZwkFbpRCYAxejqTBDBxkCRmk" -X POST http://192.168.10.9:8084/deleteall
+    # curl -v -H "Authorization: Bearer {ACCESS_TOKENT}" -X POST http://192.168.10.9:8084/deleteall
     @app.route('/deleteall', methods=[ 'GET', 'POST' ])
     @oauth.require_oauth()
     def api_delete_client():
@@ -145,16 +166,19 @@ def create_server(app, oauth=None):
         print(cu.__dict__)
         return jsonify(delete_all_client(request)), 200
 
+    # curl -v -H "Authorization: Bearer {ACCESS_TOKENT}" -X POST http://192.168.10.9:8084/expires
     @app.route('/expires', methods=[ 'GET', 'POST' ])
     @oauth.require_oauth()
     def api_toke_expires():
         return jsonify({ 'msg': True }), 200
 
+    # curl -d client_id={ID} -d client_secret={SECRET} -d _redirect_uris={REDIRECT_URI} -d grant_type={GRANT_TYPE} -d code={CODE} http://192.168.10.9:8084/api/token
     @app.route('/token', methods=[ 'POST', 'GET'])
     @oauth.token_handler
     def access_token():
         return {}
 
+    # curl -v -H "Authorization: Bearer {ACCESS_TOKENT}" -X POST http://192.168.10.9:8084/revoke
     @app.route('/revoke', methods=[ 'POST' ])
     @oauth.revoke_handler
     def revoke_token():

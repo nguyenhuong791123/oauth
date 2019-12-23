@@ -44,5 +44,13 @@ def get_pattern(date, time, regex, msec):
     else:
         return d.hour + ':' + d.minute + ':' + d.seconds + ms
 
+def datetime_to_str(dt, pattern):
+    if is_empty(pattern):
+        return dt.strftime
+    return dt.strftime(pattern)
+
+def grant_expires():
+    return datetime.datetime.now() + datetime.timedelta(seconds=100)
+
 def token_expires():
-    return datetime.timedelta(hours=1)
+    return datetime.datetime.now() + datetime.timedelta(seconds=3600)
