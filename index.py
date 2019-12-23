@@ -9,20 +9,19 @@ from flask_cors import CORS
 from utils.cm.utils import random_N_digits
 from utils.cm.dates import get_datetime
 from utils.oauth.db import db
-from utils.oauth.oa import default_provider, create_server, add_client, delete_all_client
+from utils.oauth.oa import default_provider, create_oauth, create_server, add_client, delete_all_client
 
 app = Flask(__name__)
 app.secret_key = random_N_digits(24, False)
 jwt = JWTManager(app)
+app.config['JWT_SECRET_KEY'] = 'scapp'
 CORS(app, supports_credentials=True)
 
 app.config.from_object('utils.oauth.config.Config')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
-# db.app = app
-# db.create_all()
-# oauth = default_provider(app)
-# print(oauth.__dict__)
+oauth = create_oauth(app)
+print(oauth.__dict__)
 
 @app.after_request
 def after_request(response):
@@ -36,9 +35,10 @@ def before_request():
     print(request.__dict__)
 
 @app.route('/', methods=['POST'])
+@oauth.require_oauth()
 def index():
     return "API !!!"
 
 if __name__ == "__main__":
-    app = create_server(app)
+    app = create_server(app, oauth)
     app.run(debug=True, host='0.0.0.0', port=8084)

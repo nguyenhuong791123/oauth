@@ -15,9 +15,9 @@ USE sc_oauth;
 -- create needed structure for oauth provider
 CREATE TABLE IF NOT EXISTS oa_basic (
   id INT NOT NULL PRIMARY KEY AUTO_INCREMENT
-  ,login_id VARCHAR(20) NOT NULL DEFAULT ''
+  ,username VARCHAR(20) NOT NULL DEFAULT ''
   ,password VARCHAR(80) NOT NULL DEFAULT ''
-  ,UNIQUE KEY uk_oa_basic_login_id (`login_id`)
+  ,UNIQUE KEY uk_oa_basic_username (`username`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
 
 CREATE TABLE IF NOT EXISTS oa_client (
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS oa_client (
   ,_default_scopes TEXT
   ,description VARCHAR(400)
   ,UNIQUE KEY uk_client_secret (`client_secret`)
-  ,CONSTRAINT fk_oa_client_login_id FOREIGN KEY (`basic_id`) REFERENCES `oa_basic` (`id`) ON UPDATE CASCADE
+  ,CONSTRAINT fk_oa_client_username FOREIGN KEY (`basic_id`) REFERENCES `oa_basic` (`id`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
 
 CREATE TABLE IF NOT EXISTS oa_grant (
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS oa_grant (
   ,expires TIMESTAMP
   ,_scopes TEXT
   ,INDEX idx_grant_code(`code`)
-  ,CONSTRAINT fk_oa_grant_login_id FOREIGN KEY (`basic_id`) REFERENCES `oa_basic` (`id`) ON UPDATE CASCADE
+  ,CONSTRAINT fk_oa_grant_username FOREIGN KEY (`basic_id`) REFERENCES `oa_basic` (`id`) ON UPDATE CASCADE
   ,CONSTRAINT fk_oa_grant_client_id FOREIGN KEY (`client_id`) REFERENCES `oa_client` (`client_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
 
@@ -56,6 +56,6 @@ CREATE TABLE IF NOT EXISTS oa_token (
   ,_scopes TEXT
   ,UNIQUE KEY uk_token_access_token (`access_token`)
   ,UNIQUE KEY uk_token_refresh_token (`refresh_token`)
-  ,CONSTRAINT fk_oa_token_login_id FOREIGN KEY (`basic_id`) REFERENCES `oa_basic` (`id`) ON UPDATE CASCADE
+  ,CONSTRAINT fk_oa_token_username FOREIGN KEY (`basic_id`) REFERENCES `oa_basic` (`id`) ON UPDATE CASCADE
   ,CONSTRAINT fk_oa_token_client_id FOREIGN KEY (`client_id`) REFERENCES `oa_client` (`client_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;

@@ -7,7 +7,7 @@ from .db import db, ma
 class User(db.Model):
     __tablename__ = 'oa_basic'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    login_id = db.Column(db.String(20), unique=True, index=True, nullable=False)
+    username = db.Column(db.String(20), unique=True, index=True, nullable=False)
     password = db.Column(db.String(80), nullable=False)
 
     def set_hashpw(self):
@@ -17,7 +17,7 @@ class User(db.Model):
             self.password = crypt.get_hashpw(self.password)
 
     def is_exist(self):
-        result = db.session.query(User).filter(User.login_id==self.login_id).first()
+        result = db.session.query(User).filter(User.username==self.username).first()
         if result is None:
             return self
         
@@ -61,5 +61,5 @@ class User(db.Model):
 class UserSchema(ma.ModelSchema):
     class Meta:
         model = User
-        fields = ('id', 'login_id', 'password')
-        # fields = ('id', 'login_id')
+        fields = ('id', 'username', 'password')
+        # fields = ('id', 'username')
