@@ -81,10 +81,6 @@ def add_client(req):
             auth['redirect_uris'] = request.form.get('redirect_uris')
             auth['scopes'] = request.form.get('scopes')
 
-    # auth['username'] = 'huongnv'
-    # auth['password'] = 'huongnv080'
-    # auth['redirect_uris'] = ( 'http://192.168.10.9:8084/' )
-    # auth['scopes'] = None #( 'http://192.168.10.9:8084/' )
     auth['client_id'] = uuid.uuid4().hex
     auth['client_secret'] = random_N_digits(16, False)
     auth['grant_type'] = GRANT_TYPES.BASIC
@@ -100,6 +96,8 @@ def add_client(req):
             raise ValueError("Password is required!!!")
         if is_exist(auth, 'redirect_uris') == False or is_empty(auth['redirect_uris']):
             raise ValueError("Redirect_uris is required!!!")
+        if is_exist(auth, 'scopes') == False or is_empty(auth['scopes']):
+            auth['scopes'] = None
 
         u = User(username=auth['username'], password=auth['password'])
         u = u.add()
@@ -139,6 +137,16 @@ def delete_all_client(req):
     Client().delete_all()
     User().delete_all()
 
+# def refresh_token(req):
+#     auth = None
+#     if request.method == 'POST':
+#         if request.json is not None:
+#             auth = request.json
+#         else:
+#             auth['client_id'] = request.form.get('client_id')
+#             auth['client_secret'] = request.form.get('client_secret')
+#             auth['refresh_token'] = request.form.get('refresh_token')
+
 def create_oauth(app):
     return default_provider(app)
 
@@ -153,7 +161,7 @@ def create_server(app, oauth=None):
 
     # curl -v -H "Authorization: Bearer YOUR_API_KEY" http://192.168.10.9:8084/authorize
     # curl -v -H "Content-type: application/json" -X POST -d @data/data.json http://192.168.10.9:8084/authorize
-    @app.route('/authorize', methods=[ 'GET', 'POST' ])
+    @app.route('/authorize', methods=[ 'POST' ])
     def api_add_client():
         obj = add_client(request)
         return jsonify(obj), 200
@@ -162,26 +170,31 @@ def create_server(app, oauth=None):
     @app.route('/deleteall', methods=[ 'GET', 'POST' ])
     @oauth.require_oauth()
     def api_delete_client():
-        cu = current_user()
-        print(cu.__dict__)
+        # cu = current_user()
+        # print(cu.__dict__)
         return jsonify(delete_all_client(request)), 200
 
     # curl -v -H "Authorization: Bearer {ACCESS_TOKENT}" -X POST http://192.168.10.9:8084/expires
     @app.route('/expires', methods=[ 'GET', 'POST' ])
     @oauth.require_oauth()
-    def api_toke_expires():
+    def api_token_expires():
         return jsonify({ 'msg': True }), 200
 
     # curl -d client_id={ID} -d client_secret={SECRET} -d _redirect_uris={REDIRECT_URI} -d grant_type={GRANT_TYPE} -d code={CODE} http://192.168.10.9:8084/api/token
     @app.route('/token', methods=[ 'POST', 'GET'])
     @oauth.token_handler
-    def access_token():
+    def api_access_token():
+        return {}
+
+    @app.route('/refresh', methods=[ 'GET', 'POST' ])
+    @oauth.tokensetter
+    def api_token_refresh():
         return {}
 
     # curl -v -H "Authorization: Bearer {ACCESS_TOKENT}" -X POST http://192.168.10.9:8084/revoke
     @app.route('/revoke', methods=[ 'POST' ])
     @oauth.revoke_handler
-    def revoke_token():
+    def api_token_revoke():
         pass
 
     @oauth.invalid_response

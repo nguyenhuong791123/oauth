@@ -49,8 +49,8 @@ def datetime_to_str(dt, pattern):
         return dt.strftime
     return dt.strftime(pattern)
 
-def grant_expires():
-    return datetime.datetime.now() + datetime.timedelta(seconds=100)
+def grant_expires(seconds=600):
+    return datetime.datetime.now() + datetime.timedelta(seconds=seconds)
 
-def token_expires():
-    return datetime.datetime.now() + datetime.timedelta(seconds=3600)
+def token_expires(seconds=3600):
+    return datetime.datetime.now() + datetime.timedelta(seconds=seconds)
